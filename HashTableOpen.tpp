@@ -1,14 +1,30 @@
+#include "HashTableOpen.hpp"
+
+// Constructor
 template <typename Key, typename Val>
-HashTableOpen<Key, Val>::HashTableOpen(int i) {
-    // TODO
+HashTableOpen<Key, Val>::HashTableOpen(int i) : M(i), ht(nullptr) {
+    cout << "Constructor: M = " << M << endl;
+    
+    ht = new LinkedList<Record>*[M];
+    cout << "Allocated ht array of size " << M << endl;
+    
+    for (int j = 0; j < M; j++) {
+        ht[j] = new LinkedList<Record>();
+        if (ht[j] == nullptr) {
+            cout << "ERROR: Failed to create linked list at index " << j << endl;
+        }
+    }
+    cout << "Constructor complete, all lists created" << endl;
 }
 
+// Copy constructor
 template <typename Key, typename Val>
 HashTableOpen<Key, Val>::HashTableOpen(const HashTableOpen<Key, Val>& copyObj)
 : M(0), ht(nullptr) {
     copy(copyObj);
 }
 
+// Assignment operator
 template <typename Key, typename Val>
 HashTableOpen<Key, Val>& HashTableOpen<Key, Val>::operator=
 (const HashTableOpen<Key, Val>& rightObj) {
@@ -19,18 +35,32 @@ HashTableOpen<Key, Val>& HashTableOpen<Key, Val>::operator=
     return *this;
 }
 
+// Destructor
 template <typename Key, typename Val>
 HashTableOpen<Key, Val>::~HashTableOpen() {
-    // TODO
-}
-
-template <typename Key, typename Val>
-void HashTableOpen<Key, Val>::clear() {
-    for (int i = 0; i < M; i++) {
-        ht[i]->clear();
+    if (ht != nullptr) {
+        for (int i = 0; i < M; i++) {
+            if (ht[i] != nullptr) {
+                delete ht[i];
+            }
+        }
+        delete[] ht;
     }
 }
 
+// Clear
+template <typename Key, typename Val>
+void HashTableOpen<Key, Val>::clear() {
+    if (ht != nullptr) {
+        for (int i = 0; i < M; i++) {
+            if (ht[i] != nullptr) {
+                ht[i]->clear();
+            }
+        }
+    }
+}
+
+// Copy helper
 template <typename Key, typename Val>
 void HashTableOpen<Key, Val>::copy(const HashTableOpen<Key, Val>& copyObj) {
     if (M != copyObj.M) {
@@ -57,15 +87,15 @@ void HashTableOpen<Key, Val>::copy(const HashTableOpen<Key, Val>& copyObj) {
         ht = tmp;
     }
 
-    LinkedList<Record>* myList      = nullptr;
-    LinkedList<Record>* copyList    = nullptr;
-    int                 myListLen   = 0;
-    int                 copyListLen = 0;
+    LinkedList<Record>* myList = nullptr;
+    LinkedList<Record>* copyList = nullptr;
+    int myListLen = 0;
+    int copyListLen = 0;
 
     for (int i = 0; i < M; i++) {
-        myList      = ht[i];
-        myListLen   = myList->getLength();
-        copyList    = copyObj.ht[i];
+        myList = ht[i];
+        myListLen = myList->getLength();
+        copyList = copyObj.ht[i];
         copyListLen = copyList->getLength();
 
         if (myListLen < copyListLen) {
@@ -97,70 +127,108 @@ void HashTableOpen<Key, Val>::copy(const HashTableOpen<Key, Val>& copyObj) {
     }
 }
 
+// Find
 template <typename Key, typename Val>
 Val HashTableOpen<Key, Val>::find(const Key& k) const {
-    // TODO
+    int slot = hash(k);
+    
+    if (slot < 0 || slot >= M || ht == nullptr || ht[slot] == nullptr) {
+        throw string("Hash table not properly initialized");
+    }
+    
+    LinkedList<Record>* list = ht[slot];
+    
+    for (int i = 0; i < list->getLength(); i++) {
+        Record record = list->getElement(i);
+        if (record.k == k) {
+            return record.v;
+        }
+    }
+    
+    throw string("key wasn't found in hash table");
 }
 
+// Hash function - ONLY ONE VERSION!
 template <typename Key, typename Val>
 int HashTableOpen<Key, Val>::hash(const Key& k) const {
-    // how long should each fold be
-    // changing this means you should also change the reinterpeted data type
     const int FOLD_LEN = 4;
-
-    // if the fold length is 4, then must treat the string as unsigned numbers
+    
+    // Safety check - if M is 0, we have a problem
+    if (M == 0) {
+        cout << "Warning: M is 0 in hash function!" << endl;
+        return 0;
+    }
+    
     unsigned* ikey = (unsigned*) k.c_str();
-
-    // calculate how many folds there are
     int ilen = k.length() / FOLD_LEN;
-
-    // accumulator
     unsigned sum = 0;
-
-    // for each fold, now treated as a number, add it to the running total
+    
     for (int i = 0; i < ilen; i++) {
         sum += ikey[i];
     }
-
-    // calculate how many leftover characters there are
+    
     int extra = k.length() - ilen * FOLD_LEN;
-
-    // create a temporary array that will hold those extra characters
     char temp[FOLD_LEN];
-
-    // clear out that array with a 0 value
-    ikey    = (unsigned*) temp;
+    ikey = (unsigned*) temp;
     ikey[0] = 0;
-
-    // copy the extra characters over
+    
     for (int i = 0; i < extra; i++) {
         temp[i] = k[ilen * FOLD_LEN + i];
     }
-
-    // add these final characters as a number to the running total
+    
     sum += ikey[0];
-
-    // calculate the slot position
     int slot = sum % M;
-
-    // display the hashing information
+    
     cout << k << "\thashes to slot " << slot << endl;
-
-    // return the valid slot position
+    
     return slot;
 }
 
 template <typename Key, typename Val>
 void HashTableOpen<Key, Val>::insert(const Key& k, const Val& v) {
-    // TODO
+    Record newRec(k, v);
+    int slot = hash(k);
+    ht[slot]->insert(0, newRec);  // This will now work!
 }
 
+// Remove
 template <typename Key, typename Val>
 void HashTableOpen<Key, Val>::remove(const Key& k) {
-    // TODO
+    if (ht == nullptr) {
+        throw string("Hash table not initialized");
+    }
+    
+    int slot = hash(k);
+    
+    if (slot < 0 || slot >= M || ht[slot] == nullptr) {
+        throw string("Invalid slot or uninitialized list");
+    }
+    
+    LinkedList<Record>* list = ht[slot];
+    
+    for (int i = 0; i < list->getLength(); i++) {
+        Record record = list->getElement(i);
+        if (record.k == k) {
+            list->remove(i);
+            return;
+        }
+    }
+    
+    throw string("key wasn't found in hash table");
 }
 
+// Size
 template <typename Key, typename Val>
 int HashTableOpen<Key, Val>::size() const {
-    // TODO
+    if (ht == nullptr) {
+        return 0;
+    }
+    
+    int total = 0;
+    for (int i = 0; i < M; i++) {
+        if (ht[i] != nullptr) {
+            total += ht[i]->getLength();
+        }
+    }
+    return total;
 }

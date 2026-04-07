@@ -93,29 +93,30 @@ int LinkedList<T>::getLength() const {
     return this->length;
 }
 
+// FIXED insert method
 template <typename T>
 void LinkedList<T>::insert(int position, const T& elem) {
-    if (position < 0 || position >= this->length) {
+    // Allow position 0 when empty, and allow position == length (append)
+    if (position < 0 || position > this->length) {
         throw string("insert: error, position out of bounds");
     }
 
-    Node* n    = new Node(elem);
-    Node* curr = head;
-    Node* prev = nullptr;
-
-    for (int i = 0; i < position; i++) {
-        prev = curr;
-        curr = curr->next;
-    }
-
-    if (curr == head) {
+    Node* n = new Node(elem);
+    
+    if (position == 0) {
+        // Insert at beginning
+        n->next = head;
         head = n;
+    } else {
+        // Insert in middle or end
+        Node* curr = head;
+        for (int i = 0; i < position - 1; i++) {
+            curr = curr->next;
+        }
+        n->next = curr->next;
+        curr->next = n;
     }
-    else {
-        prev->next = n;
-    }
-
-    n->next = curr;
+    
     this->length++;
 }
 
